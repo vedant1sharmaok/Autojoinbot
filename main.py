@@ -7,7 +7,7 @@ from logger import logger
 from db import connect_db, close_db
 from middlewares.error_handler import ErrorHandlerMiddleware
 from handlers.add_channel import router as add_channel_router
-from handlers.join_request import router as join_router
+from handlers.join_request import router as join_request_router
 from handlers.welcome_user import router as welcome_user_router
 from handlers.welcome_owner import router as welcome_owner_router
 
@@ -23,7 +23,7 @@ async def main():
     dp.update.middleware(ErrorHandlerMiddleware())
     dp.include_router(start_router)
     dp.include_router(add_channel_router)
-    dp.include_router(join_router)
+    dp.include_router(join_request_router)
     dp.include_router(welcome_user_router)
     dp.include_router(welcome_owner_router)
     await connect_db()
