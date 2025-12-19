@@ -1,27 +1,25 @@
 from aiogram import Router, F
-from aiogram.types import Message
-from services.welcome_service import submit_custom_welcome
+from aiogram.types import CallbackQuery
+from services.welcome_service import approve_welcome, reject_welcome
+from config import config
 
 router = Router()
 
 
-@router.message(F.text.startswith("/setwelcome"))
-async def set_welcome(message: Message):
-    if not message.reply_to_message:
-        await message.answer(
-            "Reply to a message with /setwelcome to set it as welcome text."
-        )
+@router.callback_query(F.data.startswith("welcome_"))
+async def review_welcome(callback: CallbackQuery):
+    if callback.from_user.id != config.OWNER_ID:
         return
 
-    chat_id = message.chat.id
-    text = message.reply_to_message.text
+    action, chat_id = callback.data.split(":")
+    chat_id = int(chat_id)
 
-    await submit_custom_welcome(
-        owner_id=message.from_user.id,
-        chat_id=chat_id,
-        text=text
-    )
+    if action == "welcome_approve":
+        await approve_welcome(chat_id)
+        await callback.message.answer("✅ Welcome approved")
 
-    await message.answer(
-        "📩 Welcome message sent for owner approval."
-    )
+    elif action == "welcome_reject":
+        await reject_welcome(chat_id)
+        await callback.message.answer("❌ Welcome rejected")
+
+    await callback.answer()
