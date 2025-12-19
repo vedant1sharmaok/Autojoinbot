@@ -1,7 +1,7 @@
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
-
+from handlers.start import router as start_router
 from config import config
 from logger import logger
 from db import connect_db, close_db
@@ -18,7 +18,7 @@ async def main():
 
     dp = Dispatcher()
     dp.update.middleware(ErrorHandlerMiddleware())
-
+    dp.include_router(start_router)
     await connect_db()
 
     try:
