@@ -1,0 +1,35 @@
+from aiogram import Router, F
+from aiogram.types import Message
+
+from services.user_service import (
+    create_user_if_not_exists,
+    is_blocked,
+    is_restricted,
+)
+from keyboards.main_menu import main_menu
+
+router = Router()
+
+
+@router.message(F.text.startswith("/start"))
+async def start_handler(message: Message):
+    args = message.text.split()
+    ref_by = int(args[1]) if len(args) > 1 and args[1].isdigit() else None
+
+    user = await create_user_if_not_exists(message.from_user.id, ref_by)
+
+    if is_blocked(user):
+        await message.answer("🚫 You are blocked from using this bot.")
+        return
+
+    if is_restricted(user):
+        await message.answer(
+            "⚠️ Your account is restricted.\nContact support.",
+            reply_markup=main_menu(user["role"])
+        )
+        return
+
+    await message.answer(
+        "👋 Welcome to the bot!\nUse the menu below to continue.",
+        reply_markup=main_menu(user["role"])
+    )
