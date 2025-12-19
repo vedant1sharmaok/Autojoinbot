@@ -20,6 +20,9 @@ async def main():
     dp = Dispatcher()
     dp.update.middleware(ErrorHandlerMiddleware())
     dp.include_router(start_router)
+    dp.include_router(add_channel_router)
+    dp.include_router(join_router)
+
     await connect_db()
 
     try:
