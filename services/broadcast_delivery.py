@@ -85,10 +85,10 @@ async def _deliver_channel(bot, broadcast: dict):
 
 async def _safe_send(bot, user_id: int, broadcast: dict):
     """
-    Safe send with retry + logging.
+    Safe send with retry + logging (EXTENDED).
     """
     try:
-        await _send_content(
+        msg = await _send_content(
             bot,
             user_id,
             broadcast["content_type"],
@@ -98,6 +98,7 @@ async def _safe_send(bot, user_id: int, broadcast: dict):
         await db.broadcast_logs.insert_one({
             "broadcast_id": broadcast["broadcast_id"],
             "user_id": user_id,
+            "message_id": msg.message_id if msg else None,
             "status": "sent"
         })
 
@@ -107,10 +108,11 @@ async def _safe_send(bot, user_id: int, broadcast: dict):
         await db.broadcast_logs.insert_one({
             "broadcast_id": broadcast["broadcast_id"],
             "user_id": user_id,
+            "message_id": None,
             "status": "failed",
             "error": str(e)
         })
 
         logger.warning(
             f"BROADCAST_SEND_FAILED broadcast={broadcast['broadcast_id']} user={user_id}"
-                             )
+        )
