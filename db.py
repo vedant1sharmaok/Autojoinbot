@@ -22,3 +22,6 @@ async def close_db():
     if client:
         client.close()
         logger.info("MongoDB connection closed")
+        
+async def ensure_indexes():
+    await db.broadcast_logs.create_index("broadcast_id")
