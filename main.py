@@ -33,7 +33,7 @@ async def main():
     finally:
         await close_db()
         await bot.session.close()
-
+        asyncio.create_task(scheduler_worker(bot))
 
 if __name__ == "__main__":
     try:
