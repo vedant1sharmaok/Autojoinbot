@@ -27,7 +27,8 @@ async def main():
     dp.include_router(welcome_user_router)
     dp.include_router(welcome_owner_router)
     await connect_db()
-
+    await ensure_indexes()
+    
     try:
         await dp.start_polling(bot)
     finally:
