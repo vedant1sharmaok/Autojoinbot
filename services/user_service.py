@@ -25,6 +25,18 @@ async def create_user_if_not_exists(user_id: int, ref_by: int | None = None):
     return doc
 
 
+# ✅ REQUIRED ADDITION (DO NOT REMOVE)
+async def register_user(user):
+    """
+    Used by handlers/start.py
+    Accepts Telegram User object
+    """
+    return await create_user_if_not_exists(
+        user_id=user.id,
+        ref_by=None
+    )
+
+
 async def is_blocked(user: dict) -> bool:
     return user["role"] == "blocked"
 
