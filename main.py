@@ -16,7 +16,7 @@ from handlers.join_request import router as join_request_router
 from handlers.welcome_user import router as welcome_user_router
 from handlers.welcome_owner import router as welcome_owner_router
 
-from services.scheduler import scheduler_worker
+from services.broadcast_scheduler import scheduler_worker
 
 
 async def main():
