@@ -10,31 +10,40 @@ async def get_user(user_id: int):
     return await db.db.users.find_one({"user_id": user_id})
 
 
-async def create_user_if_not_exists(user_id: int, ref_by: int | None = None):
-    user = await get_user(user_id)
+# ✅ BACKWARD + FORWARD COMPATIBLE
+async def create_user_if_not_exists(
+    user_id: int | None = None,
+    ref_by: int | None = None,
+    telegram_id: int | None = None
+):
+    # Normalize ID (supports old & new callers)
+    uid = telegram_id or user_id
+    if uid is None:
+        raise ValueError("User ID is required")
 
+    user = await get_user(uid)
     if user:
         return user
 
-    role = "owner" if user_id == config.OWNER_ID else "free"
+    role = "owner" if uid == config.OWNER_ID else "free"
 
-    doc = user_document(user_id, ref_by)
+    doc = user_document(uid, ref_by)
     doc["role"] = role
 
     await db.db.users.insert_one(doc)
-    logger.info(f"New user registered: {user_id} ({role})")
+    logger.info(f"New user registered: {uid} ({role})")
 
     return doc
 
 
-# ✅ REQUIRED ADDITION (DO NOT REMOVE)
+# ✅ REQUIRED ADDITION (USED BY NEW START FLOW)
 async def register_user(user):
     """
     Used by handlers/start.py
     Accepts Telegram User object
     """
     return await create_user_if_not_exists(
-        user_id=user.id,
+        telegram_id=user.id,
         ref_by=None
     )
 
