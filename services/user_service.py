@@ -49,8 +49,8 @@ async def register_user(user):
 
 
 async def is_blocked(user: dict) -> bool:
-    return user["role"] == "blocked"
+    return user.get("role") == "blocked"
 
 
 async def is_restricted(user: dict) -> bool:
-    return user["role"] == "restricted"
+    return user.get("role") == "restricted"
