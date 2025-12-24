@@ -1,9 +1,11 @@
 from typing import Optional
+
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError
+
 from logger import logger
 
-# ✅ Correct DB import (runtime-safe)
+# Runtime-safe DB import
 import db
 
 
@@ -54,8 +56,11 @@ async def deliver_pending_welcomes(
     Deliver all pending welcome messages when user becomes reachable.
     """
 
+    # ✅ Correct MongoDB check
     if db.db is None:
-        logger.error("DB not initialized while delivering pending welcomes")
+        logger.error(
+            "DB not initialized while delivering pending welcomes"
+        )
         return
 
     cursor = db.db.pending_welcomes.find(
@@ -93,8 +98,11 @@ async def queue_pending_welcome(
     Store welcome message for later delivery.
     """
 
-    if not db.db:
-        logger.error("DB not initialized while queueing welcome")
+    # ✅ Correct MongoDB check
+    if db.db is None:
+        logger.error(
+            "DB not initialized while queueing welcome"
+        )
         return
 
     await db.db.pending_welcomes.insert_one(
@@ -107,4 +115,4 @@ async def queue_pending_welcome(
 
     logger.info(
         f"Queued pending welcome for user {user_id}"
-            )
+    )
