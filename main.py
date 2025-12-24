@@ -1,5 +1,6 @@
 import asyncio
 import signal
+import threading  # ✅ ADDED
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
@@ -17,10 +18,17 @@ from handlers.welcome_user import router as welcome_user_router
 from handlers.welcome_owner import router as welcome_owner_router
 
 from services.broadcast_scheduler import scheduler_worker
+from health_server import run_health_server  # ✅ ADDED
 
 
 async def main():
     logger.info("Starting Telegram Bot — Production Mode")
+
+    # ✅ START HEALTH CHECK SERVER (Koyeb requirement)
+    threading.Thread(
+        target=run_health_server,
+        daemon=True
+    ).start()
 
     bot = Bot(
         token=config.BOT_TOKEN,
