@@ -1,53 +1,63 @@
-from aiogram import Router, F
-from aiogram.types import Message
-
-from services.user_service import (
-    create_user_if_not_exists,
-    is_blocked,
-    is_restricted,
-)
-from services.welcome_delivery_service import deliver_pending_welcomes
-from keyboards.main_menu import main_menu
+import db
 from logger import logger
+from config import config
+from models.user import user_document
 
-router = Router()
+
+async def get_user(user_id: int):
+    if db.db is None:
+        raise RuntimeError("Database not initialized")
+    return await db.db.users.find_one({"user_id": user_id})
 
 
-@router.message(F.text.startswith("/start"))
-async def start_handler(message: Message):
-    args = message.text.split()
-    ref_by = int(args[1]) if len(args) > 1 and args[1].isdigit() else None
+async def create_user_if_not_exists(
+    user_id: int | None = None,
+    ref_by: int | None = None,
+    telegram_id: int | None = None
+):
+    # Normalize ID (supports old & new callers)
+    uid = telegram_id or user_id
+    if uid is None:
+        raise ValueError("User ID is required")
 
-    # Create / fetch user (Phase 2 logic)
-    user = await create_user_if_not_exists(
-        telegram_id=message.from_user.id,
-        ref_by=ref_by
+    user = await get_user(uid)
+
+    # 🔒 HARD GUARANTEE: OWNER CAN NEVER BE BLOCKED
+    if user:
+        if uid == config.OWNER_ID:
+            if user.get("role") != "owner":
+                await db.db.users.update_one(
+                    {"user_id": uid},
+                    {"$set": {"role": "owner"}}
+                )
+                user["role"] = "owner"
+                logger.warning(f"OWNER role enforced for {uid}")
+        return user
+
+    # New user
+    role = "owner" if uid == config.OWNER_ID else "free"
+
+    doc = user_document(uid, ref_by)
+    doc["role"] = role
+
+    await db.db.users.insert_one(doc)
+    logger.info(f"New user registered: {uid} ({role})")
+
+    return doc
+
+
+# Used by other flows (SAFE)
+async def register_user(user):
+    return await create_user_if_not_exists(
+        telegram_id=user.id,
+        ref_by=None
     )
 
-    # Blocked user
-    if is_blocked(user):
-        await message.answer("🚫 You are blocked from using this bot.")
-        return
 
-    # Restricted user
-    if is_restricted(user):
-        await message.answer(
-            "⚠️ Your account is restricted.\nContact support.",
-            reply_markup=main_menu(user["role"])
-        )
-        return
+# ❗ MUST BE SYNC (logic-only helpers)
+def is_blocked(user: dict) -> bool:
+    return user.get("role") == "blocked"
 
-    # Phase 3: Deliver pending welcomes (SAFE here)
-    await deliver_pending_welcomes(
-        bot=message.bot,
-        user_id=message.from_user.id
-    )
 
-    logger.info(f"USER_STARTED_BOT user={message.from_user.id}")
-
-    # FINAL response with MENU ✅
-    await message.answer(
-        "👋 Welcome to the bot!\nUse the menu below to continue.",
-        reply_markup=main_menu(user["role"])
-    )
-    
+def is_restricted(user: dict) -> bool:
+    return user.get("role") == "restricted"
