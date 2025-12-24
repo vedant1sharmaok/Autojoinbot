@@ -1,7 +1,49 @@
 from typing import Optional
 from aiogram import Bot
+from aiogram.exceptions import TelegramForbiddenError
 from logger import logger
+
+# ✅ Correct DB import (runtime-safe)
 import db
+
+
+async def attempt_direct_welcome(
+    bot: Bot,
+    user_id: int,
+    message: str,
+    channel_id: Optional[int] = None
+) -> bool:
+    """
+    Try to send welcome message directly.
+    If user cannot be messaged, store it for later delivery.
+    """
+
+    try:
+        await bot.send_message(
+            chat_id=user_id,
+            text=message,
+            disable_web_page_preview=True
+        )
+        logger.info(f"Direct welcome sent to user {user_id}")
+        return True
+
+    except TelegramForbiddenError:
+        # User has not started bot / DMs closed
+        logger.info(
+            f"User {user_id} unreachable, queueing welcome"
+        )
+        await queue_pending_welcome(
+            user_id=user_id,
+            message=message,
+            channel_id=channel_id
+        )
+        return False
+
+    except Exception as e:
+        logger.error(
+            f"Unexpected error sending welcome to {user_id}: {e}"
+        )
+        return False
 
 
 async def deliver_pending_welcomes(
@@ -9,8 +51,7 @@ async def deliver_pending_welcomes(
     user_id: int
 ):
     """
-    Deliver all pending welcome messages to a user
-    when they start the bot or become reachable.
+    Deliver all pending welcome messages when user becomes reachable.
     """
 
     if not db.db:
@@ -29,7 +70,6 @@ async def deliver_pending_welcomes(
                 disable_web_page_preview=True
             )
 
-            # Remove after successful delivery
             await db.db.pending_welcomes.delete_one(
                 {"_id": item["_id"]}
             )
@@ -50,8 +90,7 @@ async def queue_pending_welcome(
     channel_id: Optional[int] = None
 ):
     """
-    Store welcome message for later delivery
-    if user cannot be messaged immediately.
+    Store welcome message for later delivery.
     """
 
     if not db.db:
@@ -68,5 +107,4 @@ async def queue_pending_welcome(
 
     logger.info(
         f"Queued pending welcome for user {user_id}"
-    )
-    
+            )
