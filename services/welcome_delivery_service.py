@@ -54,7 +54,7 @@ async def deliver_pending_welcomes(
     Deliver all pending welcome messages when user becomes reachable.
     """
 
-    if not db.db:
+    if db.db is None:
         logger.error("DB not initialized while delivering pending welcomes")
         return
 
