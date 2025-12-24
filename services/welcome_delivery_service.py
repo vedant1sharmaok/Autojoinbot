@@ -1,54 +1,72 @@
-from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
-from db import db
+from typing import Optional
+from aiogram import Bot
 from logger import logger
-from models.pending_welcome import pending_welcome_document
+import db
 
 
-async def attempt_direct_welcome(bot, user_id: int, chat_id: int, text: str) -> bool:
+async def deliver_pending_welcomes(
+    bot: Bot,
+    user_id: int
+):
     """
-    Try to DM user immediately after join approval.
-    Returns True if delivered, False if fallback required.
+    Deliver all pending welcome messages to a user
+    when they start the bot or become reachable.
     """
-    try:
-        await bot.send_message(user_id, text)
-        logger.info(
-            f"WELCOME_DM_DIRECT_SUCCESS user={user_id} chat={chat_id}"
-        )
-        return True
 
-    except (TelegramForbiddenError, TelegramBadRequest):
-        await db.pending_welcomes.insert_one(
-            pending_welcome_document(
-                user_id=user_id,
-                chat_id=chat_id,
-                text=text
-            )
-        )
-        logger.warning(
-            f"WELCOME_DM_PENDING_STORED user={user_id} chat={chat_id}"
-        )
-        return False
+    if not db.db:
+        logger.error("DB not initialized while delivering pending welcomes")
+        return
 
-
-async def deliver_pending_welcomes(bot, user_id: int):
-    """
-    Deliver all pending welcomes when user starts bot.
-    """
-    cursor = db.pending_welcomes.find(
-        {"user_id": user_id, "delivered": False}
+    cursor = db.db.pending_welcomes.find(
+        {"user_id": user_id}
     )
 
     async for item in cursor:
         try:
-            await bot.send_message(user_id, item["text"])
-            await db.pending_welcomes.update_one(
-                {"_id": item["_id"]},
-                {"$set": {"delivered": True}}
+            await bot.send_message(
+                chat_id=user_id,
+                text=item["message"],
+                disable_web_page_preview=True
             )
+
+            # Remove after successful delivery
+            await db.db.pending_welcomes.delete_one(
+                {"_id": item["_id"]}
+            )
+
             logger.info(
-                f"WELCOME_DM_PENDING_DELIVERED user={user_id}"
+                f"Delivered pending welcome to user {user_id}"
             )
+
         except Exception as e:
             logger.error(
-                f"WELCOME_DM_PENDING_FAILED user={user_id} error={e}"
+                f"Failed to deliver pending welcome to {user_id}: {e}"
             )
+
+
+async def queue_pending_welcome(
+    user_id: int,
+    message: str,
+    channel_id: Optional[int] = None
+):
+    """
+    Store welcome message for later delivery
+    if user cannot be messaged immediately.
+    """
+
+    if not db.db:
+        logger.error("DB not initialized while queueing welcome")
+        return
+
+    await db.db.pending_welcomes.insert_one(
+        {
+            "user_id": user_id,
+            "message": message,
+            "channel_id": channel_id
+        }
+    )
+
+    logger.info(
+        f"Queued pending welcome for user {user_id}"
+    )
+    
