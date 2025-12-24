@@ -1,3 +1,5 @@
+# handlers/start.py
+
 from aiogram import Router, F
 from aiogram.types import Message
 
@@ -10,7 +12,6 @@ from services.welcome_delivery_service import deliver_pending_welcomes
 from keyboards.main_menu import main_menu
 from logger import logger
 
-# ✅ MUST be at top-level (this fixes your error)
 router = Router()
 
 
@@ -24,12 +25,11 @@ async def start_handler(message: Message):
         ref_by=ref_by
     )
 
-    # 🔒 Block check
+    # ✅ CORRECT: sync calls
     if is_blocked(user):
         await message.answer("🚫 You are blocked from using this bot.")
         return
 
-    # ⚠️ Restricted check
     if is_restricted(user):
         await message.answer(
             "⚠️ Your account is restricted.\nContact support.",
@@ -37,7 +37,6 @@ async def start_handler(message: Message):
         )
         return
 
-    # 📦 Deliver pending welcomes (safe)
     await deliver_pending_welcomes(
         bot=message.bot,
         user_id=message.from_user.id
@@ -45,7 +44,6 @@ async def start_handler(message: Message):
 
     logger.info(f"USER_STARTED_BOT user={message.from_user.id}")
 
-    # ✅ Final response WITH menu
     await message.answer(
         "👋 Welcome to the bot!\nUse the menu below to continue.",
         reply_markup=main_menu(user["role"])
