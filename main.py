@@ -10,7 +10,7 @@ from logger import logger
 from db import connect_db, close_db, ensure_indexes
 
 from middlewares.error_handler import ErrorHandlerMiddleware
-
+from handlers.add_channel_menu import router as add_channel_menu_router
 from handlers.start import router as start_router
 from handlers.add_channel import router as add_channel_router
 from handlers.join_request import router as join_request_router
@@ -43,7 +43,8 @@ async def main():
     dp.include_router(join_request_router)
     dp.include_router(welcome_user_router)
     dp.include_router(welcome_owner_router)
-
+    dp.include_router(add_channel_menu_router)
+    
     await connect_db()
     await ensure_indexes()
 
